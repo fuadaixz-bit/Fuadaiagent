@@ -27,6 +27,7 @@ STATE = {"chats": {}, "mem": {}, "cfg": {}, "rems": [], "daily": {}, "todos": {}
 CHAT_LIMIT = 60
 MEM_LIMIT = 500
 BUSY = set()
+PENDING_FILES = {}
 STOP = set()
 
 def save():
@@ -114,6 +115,14 @@ def send_long(chat_id, text, reply_id=None):
         if i == 0 and reply_id: kw["reply_to_message_id"] = reply_id
         tg("sendMessage", **kw)
 
+def send_file(chat_id, path, name, cap=""):
+    try:
+        with open(path, "rb") as f:
+            requests.post(f"https://api.telegram.org/bot{TG_TOKEN}/sendDocument",
+                          data={"chat_id": int(chat_id), "caption": cap},
+                          files={"document": (name, f)}, timeout=120)
+    except Exception as e: print("send_file err", e)
+
 def llm(messages, timeout=LONG_TIMEOUT, max_tokens=None):
     cfg = STATE["cfg"]
     base = cfg.get("base") or OPENAI_BASE
@@ -167,6 +176,7 @@ def auto_mem(uid, text, reply):
 TOOL_SYS = """You can use tools by starting your reply with a tag on its own line:
 WEB:<query> - live/current info (prices, weather, news, scores, rates)
 CALC:<expression> - pure math
+SITE:<description> - build a complete single-file website (HTML+CSS+JS) from this description
 The system runs it and gives you the result. Use a tag only when genuinely needed. Otherwise reply normally."""
 
 def web_search(query):
@@ -186,8 +196,26 @@ def web_search(query):
     except Exception as e:
         return "search fail: " + str(e)
 
+def build_site(desc):
+    try:
+        html = llm([
+            {"role":"system","content":"You are a website generator. Reply with ONE complete, self-contained HTML file (inline CSS/JS, modern clean design, mobile friendly). No markdown, no explanation, start with <!DOCTYPE html>."},
+            {"role":"user","content":desc}
+        ], timeout=180, max_tokens=8000)
+        html = html.strip()
+        if html.startswith("```"):
+            html = re.sub(r"^```[a-z]*\n?", "", html); html = re.sub(r"\n?```$", "", html)
+        title = re.search(r"<title>(.*?)</title>", html, re.S)
+        fname = re.sub(r"[^a-z0-9]+", "_", (title.group(1).strip().lower() if title else "site"))[:40] or "site"
+        path = "/tmp/" + fname + ".html"
+        with open(path, "w") as f: f.write(html)
+        return "FILE:" + path + "|" + fname + ".html"
+    except Exception as e:
+        return "site banate fail: " + str(e)
+
 def run_tool(tag, payload):
     if tag == "WEB": return web_search(payload.strip())
+    if tag == "SITE": return build_site(payload.strip())
     if tag == "CALC":
         try:
             if not set(payload) <= set("0123456789+-*/().% "): return "invalid expression"
@@ -242,12 +270,17 @@ def think(uid, text):
     out = llm(msgs)
     for _ in range(2):
         s2 = out.strip()
-        if s2.startswith("WEB:") or s2.startswith("CALC:"):
+        if s2.startswith(("WEB:", "CALC:", "SITE:")):
             tag, _, payload = s2.partition(":")
             result = run_tool(tag, payload)
             msgs.append({"role": "assistant", "content": out})
-            msgs.append({"role": "user", "content": "Tool result:\n"+result+"\n\nNow give the final friendly answer using this."})
-            out = llm(msgs)
+            if result.startswith("FILE:"):
+                path, name = result[5:].split("|", 1)
+                PENDING_FILES[uid] = (path, name)
+                out = llm(msgs + [{"role":"user","content":"Tool result: the website "+name+" is ready and being sent as an HTML file. Confirm to the user in one friendly line."}])
+            else:
+                msgs.append({"role": "user", "content": "Tool result:\n"+result+"\n\nNow give the final friendly answer using this."})
+                out = llm(msgs)
         else: break
     remember_chat(uid, "user", text)
     remember_chat(uid, "assistant", out)
@@ -409,6 +442,7 @@ def do_cmd(uid, text):
                 "/memory — dekho, /forget word — muche dao\n"
                 "/remind 10m | text — reminder (m/h/d ba HH:MM, 'daily' dile roj)\n"
                 "/todo add|done|list — task list\n"
+                "site banaw: bolo ekta website banao + ki hobe — .html file pathabe\n"
                 "/note text + /notes — quick notes\n"
                 "/daily 07:00 | text — roj auto text\n"
                 "/undaily — daily off\n"
@@ -448,6 +482,9 @@ def handle_update(upd):
                     out = think(uid, text)
                 finally: BUSY.discard(uid)
             send_long(uid, out, msg.get("message_id"))
+            if uid in PENDING_FILES:
+                path, name = PENDING_FILES.pop(uid)
+                send_file(uid, path, name, "tomar website ready 🎉 ei .html file ta download koro")
         except Exception as e:
             print("proc err", e)
             tg("sendMessage", chat_id=uid, text="err: " + str(e)[:300])

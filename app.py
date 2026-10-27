@@ -251,14 +251,20 @@ def write_long(uid, text):
         if str(uid) in STOP:
             STOP.discard(str(uid)); raise Exception("STOPPED: tumi nijey cancel koreso, ja hoye gese segulo sesh porjonto ready chilo")
         parts.append(p); prev = p
-    title = secs[0].strip(". ") if secs else "Ebook"
+    title = text.strip()[:60] or "Ebook"
+    # ask the brain for a proper short title from the request
+    try:
+        t = llm([{"role":"user","content":"Give a short ebook title (max 6 words, no quotes, no numbering) for this request: "+text}], timeout=30, max_tokens=30)
+        t = (t or "").strip().strip('"').replace("*","")
+        if t and len(t) < 80: title = t
+    except Exception: pass
     full = "\n\n".join(parts)
     data = make_pdf(title, full)
     if data:
         path = "/tmp/" + re.sub(r"[^a-z0-9]+", "_", title.lower())[:40] + ".pdf"
         with open(path, "wb") as f: f.write(data)
-        PENDING_FILES[uid] = (path, path.split("/")[-1])
-        return "✅ "" + title + "" ready! PDF file ta pathiya dicchi, download koro 📄"
+        PENDING_FILES[uid] = (path, path.split("/")[-1], "📄 " + title + " — tomar PDF ready, download koro")
+        return "✅ " + title + " ready! PDF file pathiyay dicchi 📄"
     return full
 
 def think(uid, text):
@@ -292,7 +298,7 @@ def think(uid, text):
             msgs.append({"role": "assistant", "content": out})
             if result.startswith("FILE:"):
                 path, name = result[5:].split("|", 1)
-                PENDING_FILES[uid] = (path, name)
+                PENDING_FILES[uid] = (path, name, "🌐 " + name + " — tomar website ready, download koro")
                 out = llm(msgs + [{"role":"user","content":"Tool result: the website "+name+" is ready and being sent as an HTML file. Confirm to the user in one friendly line."}])
             else:
                 msgs.append({"role": "user", "content": "Tool result:\n"+result+"\n\nNow give the final friendly answer using this."})
@@ -499,8 +505,8 @@ def handle_update(upd):
                 finally: BUSY.discard(uid)
             send_long(uid, out, msg.get("message_id"))
             if uid in PENDING_FILES:
-                path, name = PENDING_FILES.pop(uid)
-                send_file(uid, path, name, "tomar website ready 🎉 ei .html file ta download koro")
+                path, name, cap = PENDING_FILES.pop(uid)
+                send_file(uid, path, name, cap)
         except Exception as e:
             print("proc err", e)
             tg("sendMessage", chat_id=uid, text="err: " + str(e)[:300])

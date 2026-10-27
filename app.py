@@ -258,7 +258,7 @@ def write_long(uid, text):
         t = (t or "").strip().strip('"').replace("*","")
         if t and len(t) < 80: title = t
     except Exception: pass
-    full = "\n\n".join(parts)
+    full = clean_md("\n\n".join(parts[1:]))
     data = make_pdf(title, full)
     if data:
         path = "/tmp/" + re.sub(r"[^a-z0-9]+", "_", title.lower())[:40] + ".pdf"
@@ -350,7 +350,15 @@ def reminder_loop():
         time.sleep(20)
 
 # ---------- pdf ----------
+def clean_md(s):
+    s = re.sub(r"```[a-z]*", "", s)
+    s = re.sub(r"\*\*?", "", s)
+    s = re.sub(r"^#{1,6}\s*", "", s, flags=re.M)
+    return s
+
+
 def make_pdf(title, text):
+    text = clean_md(text)
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet

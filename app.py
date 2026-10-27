@@ -12,6 +12,8 @@ BACKUP_BASE = os.environ.get("BACKUP_BASE") or ""
 BACKUP_KEY = os.environ.get("BACKUP_KEY") or ""
 BACKUP_MODEL = os.environ.get("BACKUP_MODEL") or ""
 BRAINS = {
+    "sage": {"base": "https://discovery-api.intern-ai.org.cn/v1", "key": os.environ.get("INTERN_KEY") or "sk-84f59647f89eeb23f9c203ef132d14fe1edf9226c474a7e86f9afb624d68178d", "model": "Sage-A1.5", "label": "Sage A1.5 (most powerful)"},
+    "agents": {"base": "https://discovery-api.intern-ai.org.cn/v1", "key": os.environ.get("INTERN_KEY") or "sk-84f59647f89eeb23f9c203ef132d14fe1edf9226c474a7e86f9afb624d68178d", "model": "Agents-A1", "label": "Agents A1 (agentic)"},
     "zylo": {"base": "https://api.zyloai.net/v1", "key": os.environ.get("OPENAI_KEY") or "", "model": "nemotron-3.5-lightning", "label": "Zylo Nemotron (powerful)"},
     "groq": {"base": "https://api.groq.com/openai/v1", "key": os.environ.get("BACKUP_KEY") or "", "model": "openai/gpt-oss-120b", "label": "Groq GPT-OSS 120B (backup)"},
 }
@@ -432,7 +434,11 @@ def do_cmd(uid, text):
     if cmd == "/status":
         c = STATE["cfg"]
         base = (c.get("base") or OPENAI_BASE)
-        brain = "Zylo (nemotron-3.5, primary)" if "zylo" in base else ("Groq (backup)" if "groq" in base else base)
+        model = c.get("model") or MODEL
+        if "intern" in base: brain = "InternAI " + model
+        elif "zylo" in base: brain = "Zylo " + model
+        elif "groq" in base: brain = "Groq " + model
+        else: brain = base + " / " + model
         last = STATE.get("last_brain")
         extra = ("\nlast reply used: " + last) if last else ""
         return "ekhon cholche: " + brain + extra

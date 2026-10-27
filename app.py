@@ -8,6 +8,9 @@ TG_TOKEN = os.environ.get("TG_TOKEN", "")
 OPENAI_BASE = os.environ.get("OPENAI_BASE") or "https://generativelanguage.googleapis.com/v1beta/openai/"
 OPENAI_KEY = os.environ.get("OPENAI_KEY") or ""
 MODEL = os.environ.get("MODEL") or "gemini-2.5-flash"
+BACKUP_BASE = os.environ.get("BACKUP_BASE") or ""
+BACKUP_KEY = os.environ.get("BACKUP_KEY") or ""
+BACKUP_MODEL = os.environ.get("BACKUP_MODEL") or ""
 OWNER_ID = int(os.environ.get("OWNER_ID") or 0)
 TIMEZONE = os.environ.get("TIMEZONE") or "Asia/Dhaka"
 LONG_TIMEOUT = 300
@@ -130,6 +133,23 @@ def llm(messages, timeout=LONG_TIMEOUT, max_tokens=None):
     model = cfg.get("model") or MODEL
     if not base.startswith("http"): base = "https://" + base
     if not key: raise Exception("API key nai — Render Environment e OPENAI_KEY set koro")
+    body = {"model": model, "messages": messages}
+    if max_tokens: body["max_tokens"] = max_tokens
+    if BACKUP_BASE and BACKUP_KEY:
+        try:
+            return _llm_call(base, key, model, messages, timeout, max_tokens)
+        except Exception as e:
+            print("primary fail, backup use: ", str(e)[:120])
+            try:
+                out = _llm_call(BACKUP_BASE, BACKUP_KEY, BACKUP_MODEL, messages, timeout, max_tokens)
+                STATE["last_brain"] = "backup"
+                return out
+            except Exception as e2:
+                raise Exception("dui brain ei fail: " + str(e2)[:150])
+    return _llm_call(base, key, model, messages, timeout, max_tokens)
+
+def _llm_call(base, key, model, messages, timeout, max_tokens):
+    if not base.startswith("http"): base = "https://" + base
     body = {"model": model, "messages": messages}
     if max_tokens: body["max_tokens"] = max_tokens
     last = None

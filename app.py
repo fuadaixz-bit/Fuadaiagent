@@ -137,7 +137,9 @@ def llm(messages, timeout=LONG_TIMEOUT, max_tokens=None):
     if max_tokens: body["max_tokens"] = max_tokens
     if BACKUP_BASE and BACKUP_KEY:
         try:
-            return _llm_call(base, key, model, messages, timeout, max_tokens)
+            out = _llm_call(base, key, model, messages, timeout, max_tokens)
+            STATE["last_brain"] = "primary"
+            return out
         except Exception as e:
             print("primary fail, backup use: ", str(e)[:120])
             try:
@@ -414,6 +416,13 @@ def do_cmd(uid, text):
     if cmd == "/settings":
         c = STATE["cfg"]
         return "base: " + (c.get("base") or OPENAI_BASE) + "\nmodel: " + (c.get("model") or MODEL)
+    if cmd == "/status":
+        c = STATE["cfg"]
+        base = (c.get("base") or OPENAI_BASE)
+        brain = "Zylo (nemotron-3.5, primary)" if "zylo" in base else ("Groq (backup)" if "groq" in base else base)
+        last = STATE.get("last_brain")
+        extra = ("\nlast reply used: " + last) if last else ""
+        return "ekhon cholche: " + brain + extra
     if cmd == "/remember":
         if not arg: return "ki mone rakhbo? /remember gym roj 6 tay"
         tag = "note"

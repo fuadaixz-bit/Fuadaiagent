@@ -447,10 +447,10 @@ def do_cmd(uid, text):
         cur = c.get("base") or OPENAI_BASE
         buttons = []
         for bid, b in BRAINS.items():
-            mark = " ✅" if b["base"] == cur else ""
+            mark = " ✅" if (b["base"] == cur and b["model"] == (c.get("model") or MODEL)) else ""
             buttons.append([{"text": b["label"] + mark, "callback_data": "brain_" + bid}])
         tg("sendMessage", chat_id=int(uid), text="kon brain use korbo?", reply_markup={"inline_keyboard": buttons})
-        return None
+        return "MENU"
     if cmd.startswith("/brain_"):
         bid = cmd.replace("/brain_", "").strip()
         return set_brain(uid, bid)
@@ -584,7 +584,7 @@ def handle_update(upd):
                     tg("sendChatAction", chat_id=uid, action="typing")
                     out = think(uid, text)
                 finally: BUSY.discard(uid)
-            send_long(uid, out, msg.get("message_id"))
+            if out != "MENU": send_long(uid, out, msg.get("message_id"))
             if uid in PENDING_FILES:
                 path, name, cap = PENDING_FILES.pop(uid)
                 send_file(uid, path, name, cap)

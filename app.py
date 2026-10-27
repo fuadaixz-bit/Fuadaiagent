@@ -134,9 +134,9 @@ def send_file(chat_id, path, name, cap=""):
 
 def llm(messages, timeout=LONG_TIMEOUT, max_tokens=None):
     cfg = STATE["cfg"]
-    base = cfg.get("base") or OPENAI_BASE
-    key = cfg.get("key") or OPENAI_KEY
-    model = cfg.get("model") or MODEL
+    base = cfg.get("base") or BRAINS["sage"]["base"]
+    key = cfg.get("key") or BRAINS["sage"]["key"]
+    model = cfg.get("model") or BRAINS["sage"]["model"]
     if not base.startswith("http"): base = "https://" + base
     if not key: raise Exception("API key nai — Render Environment e OPENAI_KEY set koro")
     body = {"model": model, "messages": messages}

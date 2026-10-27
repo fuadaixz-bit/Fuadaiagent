@@ -133,17 +133,24 @@ def llm(messages, timeout=LONG_TIMEOUT, max_tokens=None):
     body = {"model": model, "messages": messages}
     if max_tokens: body["max_tokens"] = max_tokens
     last = None
-    for attempt in range(2):
+    for attempt in range(6):
         try:
             r = requests.post(base.rstrip("/") + "/chat/completions",
                 headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
                 json=body, timeout=timeout)
+            if r.status_code == 429:
+                wait = 20 + attempt * 15
+                try: wait = max(wait, int(r.json().get("error", {}).get("meta", {}).get("retry_after", 0) or 0))
+                except Exception: pass
+                time.sleep(min(wait, 90)); last = Exception("429 rate limit, retrying")
+                continue
             r.raise_for_status()
             return r.json()["choices"][0]["message"]["content"]
         except Exception as e:
             last = e
+            if "429" in str(e): continue
             time.sleep(2 + attempt * 2)
-    raise last
+    raise Exception("Groq rate limit e atke gese, 1 min por abar try koro: " + str(last)[:200])
 
 # ---------- memory ----------
 def remember(uid, text, tag="note"):
@@ -177,6 +184,7 @@ TOOL_SYS = """You can use tools by starting your reply with a tag on its own lin
 WEB:<query> - live/current info (prices, weather, news, scores, rates)
 CALC:<expression> - pure math
 SITE:<description> - build a complete single-file website (HTML+CSS+JS) from this description
+IMPORTANT: if the user asks you to make/create/build a website or webpage, ALWAYS use the SITE tag — never paste HTML code as text.
 The system runs it and gives you the result. Use a tag only when genuinely needed. Otherwise reply normally."""
 
 def web_search(query):

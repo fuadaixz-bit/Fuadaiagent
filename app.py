@@ -11,6 +11,10 @@ MODEL = os.environ.get("MODEL") or "gemini-2.5-flash"
 BACKUP_BASE = os.environ.get("BACKUP_BASE") or ""
 BACKUP_KEY = os.environ.get("BACKUP_KEY") or ""
 BACKUP_MODEL = os.environ.get("BACKUP_MODEL") or ""
+BRAINS = {
+    "zylo": {"base": "https://api.zyloai.net/v1", "key": os.environ.get("OPENAI_KEY") or "", "model": "nemotron-3.5-lightning", "label": "Zylo Nemotron (powerful)"},
+    "groq": {"base": "https://api.groq.com/openai/v1", "key": os.environ.get("BACKUP_KEY") or "", "model": "openai/gpt-oss-120b", "label": "Groq GPT-OSS 120B (backup)"},
+}
 OWNER_ID = int(os.environ.get("OWNER_ID") or 0)
 TIMEZONE = os.environ.get("TIMEZONE") or "Asia/Dhaka"
 LONG_TIMEOUT = 300
@@ -401,6 +405,15 @@ def make_pdf(title, text):
         return None
 
 # ---------- commands ----------
+def set_brain(uid, bid):
+    b = BRAINS.get(bid)
+    if not b: return "brain chinina"
+    STATE["cfg"]["base"] = b["base"]
+    STATE["cfg"]["key"] = b["key"]
+    STATE["cfg"]["model"] = b["model"]
+    save()
+    return "✅ brain switch hoye geche: " + b["label"]
+
 def do_cmd(uid, text):
     uid = str(uid)
     parts = text.split(maxsplit=1)
@@ -423,6 +436,18 @@ def do_cmd(uid, text):
         last = STATE.get("last_brain")
         extra = ("\nlast reply used: " + last) if last else ""
         return "ekhon cholche: " + brain + extra
+    if cmd == "/brain":
+        c = STATE["cfg"]
+        cur = c.get("base") or OPENAI_BASE
+        buttons = []
+        for bid, b in BRAINS.items():
+            mark = " ✅" if b["base"] == cur else ""
+            buttons.append([{"text": b["label"] + mark, "callback_data": "brain_" + bid}])
+        tg("sendMessage", chat_id=int(uid), text="kon brain use korbo?", reply_markup={"inline_keyboard": buttons})
+        return None
+    if cmd.startswith("/brain_"):
+        bid = cmd.replace("/brain_", "").strip()
+        return set_brain(uid, bid)
     if cmd == "/remember":
         if not arg: return "ki mone rakhbo? /remember gym roj 6 tay"
         tag = "note"
@@ -502,6 +527,7 @@ def do_cmd(uid, text):
                 "/remind 10m | text — reminder (m/h/d ba HH:MM, 'daily' dile roj)\n"
                 "/todo add|done|list — task list\n"
                 "site banaw: bolo ekta website banao + ki hobe — .html file pathabe\n"
+                "/brain — brain switch buttons (zylo/groq)\n"
                 "/note text + /notes — quick notes\n"
                 "/daily 07:00 | text — roj auto text\n"
                 "/undaily — daily off\n"
@@ -522,6 +548,18 @@ def handle_update(upd):
         SEEN.add(uid_upd)
         if len(SEEN) > 500: SEEN.clear()
     try:
+        cb = upd.get("callback_query")
+        if cb:
+            data = cb.get("data") or ""
+            cid = cb.get("id")
+            frm = (cb.get("from") or {}).get("id")
+            try: tg("answerCallbackQuery", callback_query_id=cid)
+            except Exception: pass
+            if data.startswith("brain_") and str(frm) == str(OWNER_ID):
+                out = set_brain(str(frm), data.replace("brain_", ""))
+                msg_obj = cb.get("message") or {}
+                tg("sendMessage", chat_id=int(frm), text=out, reply_markup={"inline_keyboard": [[{"text": "🔁 brain menu", "callback_data": "brain_menu"}]]})
+            return "ok"
         msg = (upd.get("message") or {})
         uid = (msg.get("from") or {}).get("id")
         text = (msg.get("text") or "").strip()

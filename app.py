@@ -32,6 +32,64 @@ STOP = set()
 def save():
     try: json.dump(STATE, open(DATA, "w"))
     except Exception as e: print("save err", e)
+    else: gh_backup_soon()
+
+# ---------- github backup: data.json survives render redeploys ----------
+GH_TOKEN = os.environ.get("GITHUB_TOKEN") or ""
+GH_REPO = os.environ.get("GITHUB_REPO") or "fuadaixz-bit/Fuadaiagent"
+GH_PATH = "data_backup.json"
+_gh_dirty = False
+
+def gh_get_sha():
+    try:
+        r = requests.get(f"https://api.github.com/repos/{GH_REPO}/contents/{GH_PATH}",
+                         headers={"Authorization": f"Bearer {GH_TOKEN}"}, timeout=15)
+        if r.status_code == 200: return r.json().get("sha")
+    except Exception as e: print("gh sha err", e)
+    return None
+
+def gh_backup():
+    if not GH_TOKEN: return
+    try:
+        import base64 as b64
+        body = json.dumps(STATE)
+        payload = {"message": "bot data backup", "content": b64.b64encode(body.encode()).decode(),
+                   "branch": "main"}
+        sha = gh_get_sha()
+        if sha: payload["sha"] = sha
+        r = requests.put(f"https://api.github.com/repos/{GH_REPO}/contents/{GH_PATH}",
+                         headers={"Authorization": f"Bearer {GH_TOKEN}"}, json=payload, timeout=30)
+        if r.status_code not in (200, 201): print("gh backup err", r.status_code, r.text[:200])
+    except Exception as e: print("gh backup err", e)
+
+def gh_backup_soon():
+    global _gh_dirty
+    if _gh_dirty: return
+    _gh_dirty = True
+    def _run():
+        global _gh_dirty
+        import time as _t
+        _t.sleep(20)
+        _gh_dirty = False
+        gh_backup()
+    threading.Thread(target=_run, daemon=True).start()
+
+def gh_restore():
+    if not GH_TOKEN: return False
+    try:
+        r = requests.get(f"https://api.github.com/repos/{GH_REPO}/contents/{GH_PATH}",
+                         headers={"Authorization": f"Bearer {GH_TOKEN}"}, timeout=15)
+        if r.status_code == 200:
+            import base64 as b64
+            body = b64.b64decode(r.json()["content"]).decode()
+            data = json.loads(body)
+            for k, v in data.items():
+                if k in STATE and v: STATE[k] = v
+            json.dump(STATE, open(DATA, "w"))
+            print("restored data from github backup")
+            return True
+    except Exception as e: print("gh restore err", e)
+    return False
 
 def load():
     global STATE
@@ -39,6 +97,8 @@ def load():
     except Exception: pass
 
 load()
+if not any(STATE[k] for k in ("rems", "daily", "todos", "mem")):
+    gh_restore()
 
 def now_local():
     return datetime.now(TZ) if TZ else datetime.now()

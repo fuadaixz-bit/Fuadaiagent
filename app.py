@@ -243,13 +243,21 @@ def write_long(uid, text):
         if str(uid) in STOP:
             STOP.discard(str(uid)); raise Exception("STOPPED: tumi nijey cancel koreso, ja hoye gese segulo sesh porjonto ready chilo")
         parts.append(p); prev = p
-    return "Ebook:\n\n" + "\n\n".join(parts)
+    title = secs[0].strip(". ") if secs else "Ebook"
+    full = "\n\n".join(parts)
+    data = make_pdf(title, full)
+    if data:
+        path = "/tmp/" + re.sub(r"[^a-z0-9]+", "_", title.lower())[:40] + ".pdf"
+        with open(path, "wb") as f: f.write(data)
+        PENDING_FILES[uid] = (path, path.split("/")[-1])
+        return "✅ "" + title + "" ready! PDF file ta pathiya dicchi, download koro 📄"
+    return full
 
 def think(uid, text):
     if str(uid) in STOP:
         STOP.discard(str(uid)); return "cancel kore disi, ja hoye gese bad"
     low = (text or "").lower()
-    if any(w in low for w in LONG_HINT) and len(text) > 25 and any(w in low for w in ("ban","creat","likh","write","make")):
+    if any(w in low for w in LONG_HINT) and any(w in low for w in ("ban","creat","likh","write","make","banao","bana")):
         out = write_long(uid, text)
         remember_chat(uid, "user", text)
         remember_chat(uid, "assistant", "[long ebook generated]")

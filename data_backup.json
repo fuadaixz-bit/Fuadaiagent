@@ -1,0 +1,28 @@
+{
+  "chats": {},
+  "mem": {},
+  "cfg": {
+    "base": "https://discovery-api.intern-ai.org.cn/v1",
+    "key": "sk-84f59647f89eeb23f9c203ef132d14fe1edf9226c474a7e86f9afb624d68178d",
+    "model": "Sage-A1.5"
+  },
+  "rems": [],
+  "daily": {
+    "8602407906": {
+      "jobs": [
+        {
+          "hour": 22,
+          "min": 0,
+          "text": "ki obosta?",
+          "last": "202610272200"
+        }
+      ]
+    }
+  },
+  "todos": {},
+  "notes": [],
+  "streaks": {},
+  "moods": {},
+  "last_brain": "primary",
+  "human_tick": {}
+}

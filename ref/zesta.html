@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZESTA — Cold-Pressed Juice, in 3D</title>
+<meta name="description" content="ZESTA cold-pressed fruit juice. Five flavors, zero filler. An interactive 3D juice experience in a single HTML file.">
+<style>
+@property --accent { syntax: '<color>'; inherits: true; initial-value: #ff7a00; }
+@property --deep   { syntax: '<color>'; inherits: true; initial-value: #a94400; }
+@property --bg1    { syntax: '<color>'; inherits: true; initial-value: #fff3e2; }
+@property --bg2    { syntax: '<color>'; inherits: true; initial-value: #ffc985; }
+
+:root{
+  --accent:#ff7a00; --deep:#a94400; --bg1:#fff3e2; --bg2:#ffc985;
+  --ink:#1c130e; --muted:#5d4a3f; --radius:24px;
+  transition: --accent .9s ease, --deep .9s ease, --bg1 .9s ease, --bg2 .9s ease;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color:var(--ink); background:var(--bg1); overflow-x:hidden; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--deep);outline-offset:3px;border-radius:10px}
+
+/* ---------- background layers ---------- */
+.bg{position:fixed;inset:0;z-index:-2;overflow:hidden;
+  background:
+    radial-gradient(1100px 760px at 74% 40%, var(--bg2), transparent 70%),
+    radial-gradient(900px 700px at 8% 95%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 70%),
+    var(--bg1);}
+.bigword{position:absolute;right:-2vw;top:50%;transform:translateY(-50%);
+  font-weight:900;font-size:min(26vw,380px);letter-spacing:-.06em;line-height:.8;
+  color:transparent;-webkit-text-stroke:2px color-mix(in srgb, var(--accent) 45%, transparent);
+  white-space:nowrap;user-select:none;opacity:.9;transition:opacity .2s linear}
+#gl{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;transition:opacity .25s linear}
+
+/* ---------- nav ---------- */
+.nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:50;
+  width:min(1180px,calc(100% - 28px));display:flex;align-items:center;gap:24px;
+  padding:10px 12px 10px 22px;border-radius:999px;
+  background:rgba(255,255,255,.55);backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);
+  border:1px solid rgba(255,255,255,.75);box-shadow:0 10px 30px -12px rgba(60,30,10,.25)}
+.logo{font-weight:900;font-size:1.35rem;letter-spacing:-.04em;text-decoration:none}
+.logo span{color:var(--accent)}
+.nav nav{display:flex;gap:6px;margin-left:auto}
+.nav nav a{text-decoration:none;font-weight:600;font-size:.95rem;padding:8px 14px;border-radius:999px;color:var(--muted);transition:background .2s,color .2s}
+.nav nav a:hover{background:rgba(255,255,255,.8);color:var(--ink)}
+.cart{display:flex;align-items:center;gap:8px;font-weight:700;padding:9px 10px 9px 16px;border-radius:999px;background:var(--ink);color:#fff}
+.badge{min-width:26px;height:26px;display:grid;place-items:center;border-radius:999px;background:var(--accent);color:#fff;font-size:.85rem;transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+.badge.bump{transform:scale(1.35)}
+
+/* ---------- layout ---------- */
+.stage-sec{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:40px;padding:120px 6vw 80px;position:relative}
+.stage-sec[data-stage="left"] .content{grid-column:2}
+.stage-sec[data-stage="right"] .content,.stage-sec[data-stage="hero"] .content{grid-column:1}
+.content{max-width:600px;width:100%}
+.kicker{font-weight:800;font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;color:var(--deep);margin-bottom:14px}
+h1{font-size:clamp(3.2rem,7.6vw,7rem);line-height:.92;letter-spacing:-.055em;font-weight:900;margin:18px 0 22px}
+h2{font-size:clamp(2.2rem,4.6vw,3.8rem);line-height:1;letter-spacing:-.045em;font-weight:900;margin-bottom:16px}
+h3{font-size:1.15rem;letter-spacing:-.02em}
+.accent{color:var(--accent);font-style:italic}
+.lede{font-size:clamp(1.05rem,1.4vw,1.2rem);color:var(--muted);max-width:520px}
+.sub{color:var(--muted);margin-bottom:26px;max-width:520px}
+.glass{background:rgba(255,255,255,.62);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);
+  border:1px solid rgba(255,255,255,.8);border-radius:var(--radius);box-shadow:0 24px 50px -24px rgba(70,35,10,.35)}
+
+/* ---------- hero ---------- */
+.eyebrow{display:inline-flex;align-items:center;gap:10px;padding:8px 16px 8px 12px;border-radius:999px;background:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.85);font-size:.9rem;color:var(--muted)}
+.eyebrow strong{color:var(--ink)}
+.pulse{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent);animation:pulse 1.8s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 12px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.pills{display:flex;flex-wrap:wrap;gap:10px;margin:28px 0}
+.pill{display:flex;align-items:center;gap:9px;padding:9px 16px 9px 9px;border-radius:999px;font-weight:700;font-size:.92rem;
+  background:rgba(255,255,255,.6);border:2px solid transparent;transition:transform .2s,border-color .2s,background .2s}
+.pill:hover{transform:translateY(-2px);background:rgba(255,255,255,.9)}
+.pill[aria-pressed="true"]{border-color:var(--ink);background:#fff}
+.dot{width:24px;height:24px;border-radius:50%;flex:none;box-shadow:inset -3px -4px 6px rgba(0,0,0,.25),inset 3px 3px 5px rgba(255,255,255,.55)}
+.ctas{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:15px 26px;border-radius:999px;font-weight:800;text-decoration:none;transition:transform .2s,box-shadow .2s,background .2s}
+.btn.primary{background:var(--ink);color:#fff;box-shadow:0 14px 30px -12px var(--deep)}
+.btn.primary:hover{transform:translateY(-2px);box-shadow:0 18px 34px -12px var(--deep)}
+.btn.ghost{background:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.9)}
+.btn.ghost:hover{background:#fff}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none!important}
+.stats{list-style:none;display:flex;gap:34px;margin-top:40px;flex-wrap:wrap}
+.stats b{display:block;font-size:2rem;font-weight:900;letter-spacing:-.04em;color:var(--deep)}
+.stats span{font-size:.85rem;color:var(--muted)}
+.hint{position:absolute;right:6vw;bottom:34px;font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:8px;max-width:330px}
+.hint::before{content:"";width:18px;height:28px;border:2px solid currentColor;border-radius:10px;flex:none;
+  background:radial-gradient(circle at 50% 30%, currentColor 0 2px, transparent 3px)}
+
+/* fallback bottle when WebGL is unavailable */
+.fallback{display:none}
+.no-gl .fallback{display:block;justify-self:center;width:180px;height:440px;border-radius:70px 70px 40px 40px;position:relative;
+  background:linear-gradient(to top,var(--accent) 0 62%,rgba(255,255,255,.4) 62%);border:3px solid rgba(255,255,255,.9);box-shadow:0 30px 60px -20px var(--deep)}
+.no-gl .fallback::before{content:"";position:absolute;left:50%;top:-46px;transform:translateX(-50%);width:76px;height:52px;border-radius:12px;background:var(--deep)}
+.no-gl .fallback::after{content:"ZESTA";position:absolute;left:-3px;right:-3px;top:46%;padding:22px 0;text-align:center;font-weight:900;font-size:2rem;background:var(--bg1);color:var(--deep)}
+.no-gl .hint{display:none}
+
+/* ---------- marquee ---------- */
+.marquee{overflow:hidden;background:var(--ink);color:#fff;padding:18px 0;transform:rotate(-2deg) scale(1.05);margin:20px 0;position:relative;z-index:2}
+.track{display:flex;width:max-content;animation:marq 28s linear infinite}
+.track span{font-weight:900;font-size:clamp(1.4rem,3vw,2.4rem);letter-spacing:-.03em;padding:0 26px;white-space:nowrap}
+.track i{font-style:normal;color:var(--accent)}
+@keyframes marq{to{transform:translateX(-50%)}}
+
+/* ---------- flavor cards ---------- */
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{perspective:900px}
+.tilt{position:relative;padding:20px;height:100%;transition:transform .35s cubic-bezier(.2,.8,.2,1);transform-style:preserve-3d;overflow:hidden}
+.tilt::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;
+  background:radial-gradient(320px circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.75),transparent 45%)}
+.tilt:hover::after{opacity:1}
+.card.active .tilt{outline:2px solid var(--ink)}
+.fruit{width:58px;height:58px;border-radius:50%;margin-bottom:14px;transform:translateZ(40px);
+  box-shadow:inset -8px -10px 16px rgba(0,0,0,.28),inset 6px 6px 12px rgba(255,255,255,.55),0 14px 22px -10px rgba(0,0,0,.45)}
+.card h3{transform:translateZ(30px)}
+.card p{font-size:.88rem;color:var(--muted);margin:4px 0 14px;transform:translateZ(20px)}
+.card-row{display:flex;align-items:center;justify-content:space-between;gap:8px;transform:translateZ(25px)}
+.price{font-weight:900;font-size:1.15rem}
+.mini{padding:8px 13px;border-radius:999px;font-weight:800;font-size:.82rem;background:#fff;border:1px solid rgba(0,0,0,.08);transition:background .2s,color .2s}
+.mini:hover{background:var(--ink);color:#fff}
+.mini.solid{background:var(--ink);color:#fff}
+.mini.solid:hover{background:var(--accent)}
+.btns{display:flex;gap:6px}
+
+/* ---------- process ---------- */
+.steps{display:grid;gap:16px;margin-top:10px}
+.step{display:flex;gap:20px;align-items:flex-start;padding:22px}
+.num{flex:none;width:62px;height:62px;border-radius:18px;display:grid;place-items:center;font-weight:900;font-size:1.5rem;color:#fff;
+  background:linear-gradient(145deg,var(--accent),var(--deep));transform:perspective(300px) rotateX(18deg) rotateY(-18deg);
+  box-shadow:6px 10px 0 -2px color-mix(in srgb,var(--deep) 55%,#000),0 18px 28px -10px var(--deep)}
+.step p{color:var(--muted);font-size:.95rem;margin-top:4px}
+
+/* ---------- nutrition ---------- */
+.facts{padding:26px;max-width:460px}
+.facts header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:8px solid var(--ink);padding-bottom:8px;margin-bottom:8px}
+.facts header h3{font-size:1.6rem;font-weight:900;letter-spacing:-.03em}
+.facts header span{font-size:.85rem;color:var(--muted)}
+.cal{display:flex;justify-content:space-between;align-items:baseline;border-bottom:4px solid var(--ink);padding:6px 0 10px}
+.cal b{font-size:2.6rem;font-weight:900;letter-spacing:-.04em;line-height:1}
+.row{padding:10px 0;border-bottom:1px solid rgba(0,0,0,.12)}
+.row-top{display:flex;justify-content:space-between;font-weight:700;font-size:.95rem}
+.bar{height:8px;border-radius:99px;background:rgba(0,0,0,.08);margin-top:7px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--accent),var(--deep));transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.ingr{margin-top:14px;font-size:.9rem;color:var(--muted)}
+.ingr b{color:var(--ink)}
+
+/* ---------- shop / bundle ---------- */
+.bundle{padding:24px}
+.brow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(0,0,0,.08)}
+.brow .dot{width:30px;height:30px}
+.bname{flex:1;font-weight:700}
+.bname small{display:block;font-weight:500;color:var(--muted);font-size:.8rem}
+.stepper{display:flex;align-items:center;gap:4px;background:#fff;border-radius:999px;padding:4px;border:1px solid rgba(0,0,0,.08)}
+.stepper button{width:32px;height:32px;border-radius:50%;font-weight:900;font-size:1.1rem;transition:background .2s}
+.stepper button:hover{background:var(--bg1)}
+.stepper button:disabled{opacity:.3;cursor:not-allowed}
+.stepper output{min-width:26px;text-align:center;font-weight:800}
+.summary{margin-top:16px;display:grid;gap:6px;font-size:.95rem}
+.summary div{display:flex;justify-content:space-between}
+.summary .total{font-size:1.3rem;font-weight:900;border-top:2px solid var(--ink);padding-top:10px;margin-top:4px}
+.deal{margin:14px 0;padding:11px 14px;border-radius:14px;background:color-mix(in srgb,var(--accent) 16%,#fff);font-size:.88rem;font-weight:600;color:var(--deep)}
+.empty{color:var(--muted);font-size:.9rem}
+.bundle .btn{width:100%;margin-top:14px}
+
+/* ---------- reviews ---------- */
+.reviews{padding:110px 6vw 90px;position:relative}
+.reviews h2{text-align:center}
+.reviews .sub{text-align:center;margin:0 auto 40px}
+.rgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;max-width:1180px;margin:0 auto}
+.review{padding:26px}
+.stars{color:var(--accent);letter-spacing:3px;font-size:1.1rem}
+.review blockquote{font-size:1.05rem;margin:12px 0 18px;font-weight:600;letter-spacing:-.01em}
+.who{display:flex;align-items:center;gap:12px;font-size:.9rem}
+.who b{display:block}
+.who span{color:var(--muted)}
+.ava{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:900;color:#fff;background:linear-gradient(140deg,var(--accent),var(--deep))}
+
+/* ---------- footer ---------- */
+footer{background:var(--ink);color:#f6ede6;padding:70px 6vw 40px;position:relative;z-index:2}
+.fgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;max-width:1180px;margin:0 auto}
+footer .logo{font-size:2.4rem}
+footer p{color:#bfaea2;max-width:380px;margin-top:10px}
+.news{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.news input{flex:1;min-width:200px;padding:14px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font:inherit}
+.news input::placeholder{color:#a8968a}
+.news .btn{background:var(--accent);color:#fff}
+.msg{min-height:1.4em;margin-top:8px;font-size:.88rem}
+.fine{max-width:1180px;margin:46px auto 0;padding-top:20px;border-top:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:.82rem;color:#a8968a}
+
+/* ---------- toast ---------- */
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,140%);z-index:60;background:var(--ink);color:#fff;font-weight:700;
+  padding:14px 22px;border-radius:999px;box-shadow:0 18px 40px -12px rgba(0,0,0,.5);transition:transform .45s cubic-bezier(.2,1.4,.4,1);max-width:calc(100% - 32px);text-align:center}
+.toast.show{transform:translate(-50%,0)}
+
+/* ---------- reveal ---------- */
+.reveal{opacity:0;transform:translateY(34px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.8,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* ---------- responsive ---------- */
+@media (max-width: 960px){
+  .nav nav{display:none}
+  .cart{margin-left:auto}
+  .stage-sec{grid-template-columns:1fr;padding:110px 22px 70px}
+  .stage-sec .content{grid-column:1!important;margin:0 auto}
+  .stage-sec[data-stage="hero"]{align-items:start;padding-bottom:58vh;min-height:100svh}
+  .stage-sec:not([data-stage="hero"]) .glass{background:rgba(255,255,255,.8)}
+  .hint{left:22px;right:22px;bottom:18px;max-width:none;justify-content:center}
+  .rgrid{grid-template-columns:1fr}
+  .fgrid{grid-template-columns:1fr}
+  .bigword{font-size:42vw;top:auto;bottom:6vh;transform:none}
+  .no-gl .stage-sec[data-stage="hero"]{padding-bottom:70px}
+}
+@media (max-width: 520px){
+  .cards{grid-template-columns:1fr}
+  .stats{gap:22px}
+  .step{padding:18px;gap:14px}
+  .num{width:50px;height:50px;font-size:1.2rem}
+}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .track{animation:none}
+  .reveal{transform:none;transition:opacity .3s}
+  .pulse{animation:none}
+}
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><div class="bigword" id="bigword">ORANGE</div></div>
+<canvas id="gl" aria-hidden="true"></canvas>
+
+<header class="nav">
+  <a class="logo" href="#top">ZESTA<span>.</span></a>
+  <nav aria-label="Primary">
+    <a href="#flavors">Flavors</a><a href="#process">Process</a><a href="#nutrition">Nutrition</a><a href="#shop">Shop</a>
+  </nav>
+  <button class="cart" id="cartBtn" type="button" aria-label="Cart, 0 items">Cart <span class="badge" id="cartCount">0</span></button>
+</header>
+
+<main id="top">
+  <!-- HERO -->
+  <section class="stage-sec" data-stage="hero" aria-labelledby="hero-title">
+    <div class="content">
+      <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>Now pouring: <strong id="nowName">Orange Sunrise</strong></p>
+      <h1 id="hero-title">Sunshine,<br><span class="accent">bottled.</span></h1>
+      <p class="lede">Cold-pressed fruit and nothing else. No concentrate, no added sugar, no shortcuts — just juice that tastes like the orchard it came from.</p>
+      <div class="pills" id="pills" role="group" aria-label="Choose a flavor"></div>
+      <div class="ctas">
+        <a class="btn primary" href="#shop">Build a bundle →</a>
+        <a class="btn ghost" href="#process">How it’s made</a>
+      </div>
+      <ul class="stats">
+        <li><b>100%</b><span>real fruit</span></li>
+        <li><b>0g</b><span>added sugar</span></li>
+        <li><b>72h</b><span>tree to fridge</span></li>
+      </ul>
+    </div>
+    <div class="fallback" aria-hidden="true"></div>
+    <p class="hint">Move your cursor — the bottle follows. Pick a flavor to pour a fresh one.</p>
+  </section>
+
+  <div class="marquee" aria-hidden="true">
+    <div class="track" id="track"></div>
+  </div>
+
+  <!-- FLAVORS -->
+  <section id="flavors" class="stage-sec" data-stage="left" aria-labelledby="flv-title">
+    <div class="content">
+      <p class="kicker reveal">01 — The lineup</p>
+      <h2 id="flv-title" class="reveal">Five flavors.<br>Zero filler.</h2>
+      <p class="sub reveal">Hit <b>Pour</b> on any flavor and watch the bottle drain and refill in real time.</p>
+      <div class="cards" id="cards"></div>
+    </div>
+  </section>
+
+  <!-- PROCESS -->
+  <section id="process" class="stage-sec" data-stage="right" aria-labelledby="proc-title">
+    <div class="content">
+      <p class="kicker reveal">02 — The process</p>
+      <h2 id="proc-title" class="reveal">From branch<br>to bottle in 72h.</h2>
+      <div class="steps">
+        <article class="step glass reveal"><div class="num" aria-hidden="true">1</div><div><h3>Picked at peak ripeness</h3><p>We buy from small growers who harvest by hand, only when the fruit is ready — never early to survive a long trip.</p></div></article>
+        <article class="step glass reveal"><div class="num" aria-hidden="true">2</div><div><h3>Cold-pressed, never heated</h3><p>A slow hydraulic press squeezes every drop without heat, keeping the flavor, color and vitamins intact.</p></div></article>
+        <article class="step glass reveal"><div class="num" aria-hidden="true">3</div><div><h3>Bottled &amp; shipped chilled</h3><p>Sealed in recyclable glass within hours and delivered cold to your door. Drink within 10 days of opening… if it lasts.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- NUTRITION -->
+  <section id="nutrition" class="stage-sec" data-stage="left" aria-labelledby="nut-title">
+    <div class="content">
+      <p class="kicker reveal">03 — What’s inside</p>
+      <h2 id="nut-title" class="reveal">Honest labels.<br>Nothing hidden.</h2>
+      <p class="sub reveal">Switch flavors above or in the lineup — the facts update with the bottle.</p>
+      <div class="facts glass reveal" aria-live="polite">
+        <header><h3>Nutrition Facts</h3><span id="nutName">Orange Sunrise · 330 ml</span></header>
+        <div class="cal"><span><b id="nutKcal">145</b></span><span>Calories per bottle</span></div>
+        <div class="row"><div class="row-top"><span>Natural sugars</span><span id="nutSugar">27 g</span></div><div class="bar"><i id="barSugar"></i></div></div>
+        <div class="row"><div class="row-top"><span>Vitamin C</span><span id="nutVitc">210% DV</span></div><div class="bar"><i id="barVitc"></i></div></div>
+        <div class="row"><div class="row-top"><span>Potassium</span><span id="nutPot">12% DV</span></div><div class="bar"><i id="barPot"></i></div></div>
+        <div class="row"><div class="row-top"><span>Dietary fiber</span><span id="nutFiber">1 g</span></div><div class="bar"><i id="barFiber"></i></div></div>
+        <p class="ingr"><b>Ingredients:</b> <span id="nutIngr"></span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHOP -->
+  <section id="shop" class="stage-sec" data-stage="right" aria-labelledby="shop-title">
+    <div class="content">
+      <p class="kicker reveal">04 — Build your box</p>
+      <h2 id="shop-title" class="reveal">Mix any 6+<br>and save.</h2>
+      <div class="bundle glass reveal">
+        <div id="brows"></div>
+        <div class="deal" id="deal">Add 6 bottles to unlock 10% off — 12 gets you 15%.</div>
+        <div class="summary" id="summary"></div>
+        <button class="btn primary" id="addBundle" type="button" disabled>Add bundle to cart</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section id="reviews" class="reviews" data-stage="hide" aria-labelledby="rev-title">
+    <p class="kicker reveal" style="text-align:center">05 — Fan mail</p>
+    <h2 id="rev-title" class="reveal">Squeezed with love.</h2>
+    <p class="sub reveal">Over 40,000 bottles poured last month. Here’s what people are saying.</p>
+    <div class="rgrid">
+      <figure class="review glass reveal"><div class="stars" aria-label="5 out of 5 stars">★★★★★</div><blockquote>“Tastes like biting into an actual orange. I’ve cancelled every other juice subscription.”</blockquote><figcaption class="who"><span class="ava" aria-hidden="true">MA</span><span><b>Maya A.</b><span>Orange Sunrise regular</span></span></figcaption></figure>
+      <figure class="review glass reveal"><div class="stars" aria-label="5 out of 5 stars">★★★★★</div><blockquote>“The Lime Zing after a run is unreal. Bright, cold, zero syrupy aftertaste.”</blockquote><figcaption class="who"><span class="ava" aria-hidden="true">JR</span><span><b>Jonah R.</b><span>Marathon trainee</span></span></figcaption></figure>
+      <figure class="review glass reveal"><div class="stars" aria-label="5 out of 5 stars">★★★★★</div><blockquote>“My kids fight over the Blueberry Blast. Love that the ingredient list is three words long.”</blockquote><figcaption class="who"><span class="ava" aria-hidden="true">SK</span><span><b>Sara K.</b><span>Mixed box subscriber</span></span></figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="fgrid">
+    <div>
+      <a class="logo" href="#top">ZESTA<span>.</span></a>
+      <p>Cold-pressed juice from small growers. Glass bottles, honest labels, delivered cold.</p>
+    </div>
+    <div>
+      <h3>Get first sip of new flavors</h3>
+      <div class="news">
+        <label for="email" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Email address</label>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+        <button class="btn" id="joinBtn" type="button">Join</button>
+      </div>
+      <p class="msg" id="newsMsg" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+  <div class="fine"><span>© 2026 ZESTA Juice Co. — demo storefront.</span><span>Rendered live with hand-written WebGL · no libraries.</span></div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+/* =========================================================
+   DATA
+   ========================================================= */
+var F = [
+  { id:'orange', name:'Orange Sunrise', word:'ORANGE', accent:'#ff7a00', deep:'#a94400', bg1:'#fff3e2', bg2:'#ffc985', label:'#fff8ee',
+    juice:[1.0,0.50,0.04], fruit:{mode:4, color:[1.0,0.50,0.06], color2:[0.55,0.50,0.18], size:0.36},
+    notes:'Sweet, bright Valencia oranges with a squeeze of lemon.', price:4.50,
+    nut:{kcal:145, sugar:27, vitc:210, pot:12, fiber:1}, ingr:'Cold-pressed Valencia oranges, lemon.' },
+  { id:'strawberry', name:'Strawberry Fields', word:'BERRY', accent:'#e3173e', deep:'#8c0b25', bg1:'#fff0f2', bg2:'#ffb1bf', label:'#fff5f6',
+    juice:[0.82,0.05,0.16], fruit:{mode:5, color:[0.86,0.06,0.12], color2:[0.22,0.55,0.16], size:0.32},
+    notes:'Juicy summer strawberries balanced with crisp apple.', price:4.90,
+    nut:{kcal:130, sugar:22, vitc:160, pot:8, fiber:2}, ingr:'Strawberries, apple, lemon.' },
+  { id:'lime', name:'Lime Zing', word:'LIME', accent:'#5f9e0f', deep:'#355a05', bg1:'#f4fbe6', bg2:'#cdec9a', label:'#f8fdef',
+    juice:[0.58,0.82,0.14], fruit:{mode:4, color:[0.40,0.70,0.10], color2:[0.30,0.42,0.08], size:0.30},
+    notes:'Zesty lime, cooling cucumber and a whisper of mint.', price:4.50,
+    nut:{kcal:110, sugar:18, vitc:120, pot:10, fiber:1}, ingr:'Lime, cucumber, green apple, mint.' },
+  { id:'mango', name:'Mango Tango', word:'MANGO', accent:'#f29d00', deep:'#9a5600', bg1:'#fff9e3', bg2:'#ffdc7f', label:'#fffbef',
+    juice:[1.0,0.70,0.06], fruit:{mode:6, color:[1.0,0.62,0.08], color2:[0.92,0.22,0.12], size:0.38},
+    notes:'Velvety Alphonso mango with a passion-fruit kick.', price:4.90,
+    nut:{kcal:160, sugar:31, vitc:130, pot:9, fiber:2}, ingr:'Alphonso mango, orange, passion fruit.' },
+  { id:'blueberry', name:'Blueberry Blast', word:'BLUE', accent:'#5b3fd1', deep:'#2b1a78', bg1:'#f1edff', bg2:'#c8bbff', label:'#f6f3ff',
+    juice:[0.34,0.18,0.70], fruit:{mode:7, color:[0.20,0.18,0.48], color2:[0.07,0.05,0.16], size:0.22},
+    notes:'Wild blueberries, apple and a gentle hint of ginger.', price:5.20,
+    nut:{kcal:140, sugar:25, vitc:45, pot:7, fiber:3}, ingr:'Wild blueberries, apple, ginger.' }
+];
+
+var $ = function(s){ return document.querySelector(s); };
+var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
+var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+var active = 0;
+var GL = null; // 3D controller (set if WebGL works)
+
+function dotStyle(f){
+  return 'background:radial-gradient(circle at 32% 30%, #fff 0 6%, '+f.accent+' 38%, '+f.deep+' 100%)';
+}
+function money(n){ return '$' + n.toFixed(2); }
+
+/* =========================================================
+   BUILD DOM
+   ========================================================= */
+// hero pills
+$('#pills').innerHTML = F.map(function(f,i){
+  return '<button class="pill" type="button" data-flavor-btn="'+i+'" aria-pressed="'+(i===0)+'"><span class="dot" style="'+dotStyle(f)+'"></span>'+f.name.split(' ')[0]+'</button>';
+}).join('');
+
+// marquee
+var mq = F.map(function(f){ return '<span>'+f.name+'</span><span><i>✦</i></span>'; }).join('');
+$('#track').innerHTML = mq + mq;
+
+// flavor cards
+$('#cards').innerHTML = F.map(function(f,i){
+  return '<article class="card reveal" data-card="'+i+'"><div class="tilt glass">'+
+    '<div class="fruit" style="'+dotStyle(f)+'" aria-hidden="true"></div>'+
+    '<h3>'+f.name+'</h3><p>'+f.notes+'</p>'+
+    '<div class="card-row"><span class="price">'+money(f.price)+'</span><span class="btns">'+
+    '<button class="mini" type="button" data-flavor-btn="'+i+'" aria-pressed="'+(i===0)+'" aria-label="Pour '+f.name+' into the 3D bottle">Pour</button>'+
+    '<button class="mini solid" type="button" data-add="'+i+'" aria-label="Add one '+f.name+' to cart">+ Add</button>'+
+    '</span></div></div></article>';
+}).join('');
+
+/* =========================================================
+   FLAVOR SWITCHING
+   ========================================================= */
+function applyFlavor(i){
+  active = i;
+  var f = F[i], s = document.documentElement.style;
+  s.setProperty('--accent', f.accent); s.setProperty('--deep', f.deep);
+  s.setProperty('--bg1', f.bg1); s.setProperty('--bg2', f.bg2);
+  $$('[data-flavor-btn]').forEach(function(b){ b.setAttribute('aria-pressed', String(+b.getAttribute('data-flavor-btn') === i)); });
+  $$('[data-card]').forEach(function(c){ c.classList.toggle('active', +c.getAttribute('data-card') === i); });
+  $('#nowName').textContent = f.name;
+  $('#bigword').textContent = f.word;
+  // nutrition
+  $('#nutName').textContent = f.name + ' · 330 ml';
+  $('#nutKcal').textContent = f.nut.kcal;
+  $('#nutSugar').textContent = f.nut.sugar + ' g';
+  $('#nutVitc').textContent = f.nut.vitc + '% DV';
+  $('#nutPot').textContent = f.nut.pot + '% DV';
+  $('#nutFiber').textContent = f.nut.fiber + ' g';
+  $('#nutIngr').textContent = f.ingr;
+  $('#barSugar').style.width = Math.min(100, f.nut.sugar/35*100) + '%';
+  $('#barVitc').style.width = Math.min(100, f.nut.vitc/220*100) + '%';
+  $('#barPot').style.width = Math.min(100, f.nut.pot/15*100) + '%';
+  $('#barFiber').style.width = Math.min(100, f.nut.fiber/4*100) + '%';
+  if (GL) GL.setFlavor(i);
+}
+document.addEventListener('click', function(e){
+  var b = e.target.closest('[data-flavor-btn]');
+  if (b) applyFlavor(+b.getAttribute('data-flavor-btn'));
+  var a = e.target.closest('[data-add]');
+  if (a){ var f = F[+a.getAttribute('data-add')]; addToCart(1, f.name + ' added to cart'); }
+});
+
+/* =========================================================
+   CART + TOAST
+   ========================================================= */
+var cart = 0, toastTimer = 0;
+function toast(msg){
+  var t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+}
+function addToCart(n, msg){
+  cart += n;
+  var c = $('#cartCount'); c.textContent = cart; c.classList.add('bump');
+  setTimeout(function(){ c.classList.remove('bump'); }, 250);
+  $('#cartBtn').setAttribute('aria-label', 'Cart, ' + cart + ' item' + (cart === 1 ? '' : 's'));
+  toast('🧃 ' + msg);
+}
+$('#cartBtn').addEventListener('click', function(){
+  toast(cart ? 'You have ' + cart + ' bottle' + (cart===1?'':'s') + ' in your cart — checkout is disabled in this demo.' : 'Your cart is empty. Pour something delicious!');
+});
+
+/* =========================================================
+   BUNDLE BUILDER
+   ========================================================= */
+var qty = F.map(function(){ return 0; });
+$('#brows').innerHTML = F.map(function(f,i){
+  return '<div class="brow"><span class="dot" style="'+dotStyle(f)+'" aria-hidden="true"></span>'+
+    '<span class="bname">'+f.name+'<small>'+money(f.price)+' / bottle</small></span>'+
+    '<span class="stepper"><button type="button" data-q="'+i+'" data-d="-1" aria-label="Remove one '+f.name+'">−</button>'+
+    '<output id="q'+i+'" aria-live="polite">0</output>'+
+    '<button type="button" data-q="'+i+'" data-d="1" aria-label="Add one '+f.name+'">+</button></span></div>';
+}).join('');
+function renderBundle(){
+  var items = 0, sub = 0;
+  qty.forEach(function(q,i){ items += q; sub += q * F[i].price; $('#q'+i).textContent = q; });
+  $$('[data-q][data-d="-1"]').forEach(function(b){ b.disabled = qty[+b.getAttribute('data-q')] === 0; });
+  var rate = items >= 12 ? 0.15 : items >= 6 ? 0.10 : 0;
+  var disc = sub * rate, total = sub - disc;
+  var deal = $('#deal');
+  if (items === 0) deal.textContent = 'Add 6 bottles to unlock 10% off — 12 gets you 15%.';
+  else if (items < 6) deal.textContent = 'Add ' + (6-items) + ' more bottle' + (6-items===1?'':'s') + ' to unlock 10% off.';
+  else if (items < 12) deal.textContent = '10% off unlocked! Add ' + (12-items) + ' more for 15%.';
+  else deal.textContent = '🎉 Maximum 15% off unlocked.';
+  $('#summary').innerHTML = items === 0
+    ? '<p class="empty">Your box is empty — use the + buttons to add a few bottles.</p>'
+    : '<div><span>Bottles</span><span>'+items+'</span></div><div><span>Subtotal</span><span>'+money(sub)+'</span></div>'+
+      '<div><span>Bundle discount'+(rate? ' ('+Math.round(rate*100)+'%)':'')+'</span><span>−'+money(disc)+'</span></div>'+
+      '<div class="total"><span>Total</span><span>'+money(total)+'</span></div>';
+  $('#addBundle').disabled = items === 0;
+  return items;
+}
+$('#brows').addEventListener('click', function(e){
+  var b = e.target.closest('[data-q]'); if (!b) return;
+  var i = +b.getAttribute('data-q');
+  qty[i] = Math.max(0, Math.min(24, qty[i] + (+b.getAttribute('data-d'))));
+  renderBundle();
+  if (+b.getAttribute('data-d') > 0 && i !== active) applyFlavor(i);
+});
+$('#addBundle').addEventListener('click', function(){
+  var items = renderBundle(); if (!items) return;
+  addToCart(items, items + ' bottle bundle added to cart');
+  qty = qty.map(function(){ return 0; }); renderBundle();
+});
+renderBundle();
+
+/* newsletter (no form submission) */
+$('#joinBtn').addEventListener('click', function(){
+  var v = $('#email').value.trim(), m = $('#newsMsg');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){ m.textContent = 'Please enter a valid email address.'; m.style.color = '#ffb4a8'; return; }
+  m.textContent = 'Thanks! You’re on the list for the next flavor drop.'; m.style.color = '#c9f2a5'; $('#email').value = '';
+});
+
+/* =========================================================
+   CARD TILT + REVEAL
+   ========================================================= */
+$$('.tilt').forEach(function(el){
+  el.addEventListener('pointermove', function(e){
+    if (e.pointerType === 'touch') return;
+    var r = el.getBoundingClientRect(), x = (e.clientX - r.left)/r.width - .5, y = (e.clientY - r.top)/r.height - .5;
+    el.style.transform = 'rotateY('+(x*16)+'deg) rotateX('+(-y*16)+'deg)';
+    el.style.setProperty('--gx', ((x+.5)*100)+'%'); el.style.setProperty('--gy', ((y+.5)*100)+'%');
+  });
+  el.addEventListener('pointerleave', function(){ el.style.transform = ''; });
+});
+if ('IntersectionObserver' in window){
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){ if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+  }, {threshold:.15, rootMargin:'0px 0px -5% 0px'});
+  $$('.reveal').forEach(function(el, i){ el.style.transitionDelay = ((i % 5) * 70) + 'ms'; io.observe(el); });
+} else { $$('.reveal').forEach(function(el){ el.classList.add('in'); }); }
+
+/* =========================================================
+   3D — hand-written WebGL
+   ========================================================= */
+function hex2rgb(h){ var n = parseInt(h.slice(1),16); return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]; }
+
+var M = {
+  id: function(){ var m = new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
+  mul: function(a,b){ var o = new Float32Array(16);
+    for (var c=0;c<4;c++) for (var r=0;r<4;r++){ var s=0; for (var k=0;k<4;k++) s += a[k*4+r]*b[c*4+k]; o[c*4+r]=s; } return o; },
+  chain: function(){ var m = arguments[0]; for (var i=1;i<arguments.length;i++) m = M.mul(m, arguments[i]); return m; },
+  persp: function(f,asp,n,fa){ var t=1/Math.tan(f/2), m=new Float32Array(16);
+    m[0]=t/asp; m[5]=t; m[10]=(fa+n)/(n-fa); m[11]=-1; m[14]=2*fa*n/(n-fa); return m; },
+  lookAt: function(e,c,u){
+    var z=[e[0]-c[0],e[1]-c[1],e[2]-c[2]], zl=Math.hypot(z[0],z[1],z[2]); z=[z[0]/zl,z[1]/zl,z[2]/zl];
+    var x=[u[1]*z[2]-u[2]*z[1], u[2]*z[0]-u[0]*z[2], u[0]*z[1]-u[1]*z[0]], xl=Math.hypot(x[0],x[1],x[2]); x=[x[0]/xl,x[1]/xl,x[2]/xl];
+    var y=[z[1]*x[2]-z[2]*x[1], z[2]*x[0]-z[0]*x[2], z[0]*x[1]-z[1]*x[0]];
+    var m=new Float32Array(16);
+    m[0]=x[0]; m[4]=x[1]; m[8]=x[2];  m[12]=-(x[0]*e[0]+x[1]*e[1]+x[2]*e[2]);
+    m[1]=y[0]; m[5]=y[1]; m[9]=y[2];  m[13]=-(y[0]*e[0]+y[1]*e[1]+y[2]*e[2]);
+    m[2]=z[0]; m[6]=z[1]; m[10]=z[2]; m[14]=-(z[0]*e[0]+z[1]*e[1]+z[2]*e[2]);
+    m[15]=1; return m; },
+  T: function(x,y,z){ var m=M.id(); m[12]=x; m[13]=y; m[14]=z; return m; },
+  S: function(x,y,z){ var m=M.id(); m[0]=x; m[5]=(y===undefined?x:y); m[10]=(z===undefined?x:z); return m; },
+  RX: function(a){ var m=M.id(), c=Math.cos(a), s=Math.sin(a); m[5]=c; m[6]=s; m[9]=-s; m[10]=c; return m; },
+  RY: function(a){ var m=M.id(), c=Math.cos(a), s=Math.sin(a); m[0]=c; m[2]=-s; m[8]=s; m[10]=c; return m; },
+  RZ: function(a){ var m=M.id(), c=Math.cos(a), s=Math.sin(a); m[0]=c; m[1]=s; m[4]=-s; m[5]=c; return m; }
+};
+
+// Surface of revolution from a [radius, y] profile
+function lathe(prof, seg){
+  var pos=[], nrm=[], uv=[], idx=[], n=prof.length, nn=[], i, j;
+  for (i=0;i<n;i++){
+    var p0=prof[Math.max(i-1,0)], p1=prof[Math.min(i+1,n-1)];
+    var dr=p1[0]-p0[0], dy=p1[1]-p0[1], l=Math.hypot(dr,dy)||1;
+    nn.push([dy/l, -dr/l]);
+  }
+  for (i=0;i<n;i++) for (j=0;j<=seg;j++){
+    var u=j/seg, a=(u-.5)*Math.PI*2, s=Math.sin(a), c=Math.cos(a), r=prof[i][0];
+    pos.push(r*s, prof[i][1], r*c);
+    nrm.push(nn[i][0]*s, nn[i][1], nn[i][0]*c);
+    uv.push(u, i/(n-1));
+  }
+  for (i=0;i<n-1;i++) for (j=0;j<seg;j++){
+    var A=i*(seg+1)+j, B=A+seg+1;
+    idx.push(A, A+1, B,  B, A+1, B+1);
+  }
+  return {pos:pos, nrm:nrm, uv:uv, idx:idx};
+}
+function sphereProf(rings){ var p=[]; for (var i=0;i<=rings;i++){ var t=i/rings*Math.PI; p.push([Math.sin(t), -Math.cos(t)]); } return p; }
+
+var VS = [
+'attribute vec3 a_pos; attribute vec3 a_nrm; attribute vec2 a_uv;',
+'uniform mat4 u_model; uniform mat4 u_vp; uniform float u_mode; uniform float u_time; uniform float u_fill; uniform vec2 u_slope;',
+'varying vec3 v_wpos; varying vec3 v_nrm; varying vec3 v_opos; varying vec2 v_uv;',
+'void main(){',
+'  vec3 p = a_pos; vec3 n = a_nrm;',
+'  if (u_mode > 0.5 && u_mode < 1.5) {',
+'    float plane = u_fill + dot(p.xz, u_slope);',
+'    if (p.y > plane) {',
+'      float w = sin(p.x*6.0 + u_time*2.4)*0.012 + cos(p.z*5.0 - u_time*1.9)*0.012;',
+'      p.y = plane + w;',
+'      n = normalize(vec3(-u_slope.x, 1.0, -u_slope.y));',
+'    }',
+'  } else if (u_mode > 4.5 && u_mode < 5.5) {',
+'    float k = mix(0.42, 1.0, smoothstep(-1.0, 0.55, p.y));',
+'    p.xz *= k; p.y *= 1.15;',
+'    n = normalize(vec3(n.x, n.y - 0.35*(1.0-k), n.z));',
+'  } else if (u_mode > 5.5 && u_mode < 6.5) {',
+'    p *= vec3(0.8, 1.0, 0.7); p.x += 0.15*p.y*p.y - 0.08;',
+'    n = normalize(n / vec3(0.8, 1.0, 0.7));',
+'  }',
+'  v_opos = a_pos; v_uv = a_uv;',
+'  vec4 wp = u_model * vec4(p, 1.0);',
+'  v_wpos = wp.xyz;',
+'  v_nrm = (u_model * vec4(n, 0.0)).xyz;',
+'  gl_Position = u_vp * wp;',
+'}'].join('\n');
+
+var FS = [
+'precision highp float;',
+'uniform vec3 u_color; uniform vec3 u_color2; uniform vec3 u_eye;',
+'uniform float u_mode; uniform float u_alpha; uniform sampler2D u_tex;',
+'varying vec3 v_wpos; varying vec3 v_nrm; varying vec3 v_opos; varying vec2 v_uv;',
+'float hash(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }',
+'float noise(vec3 x){ vec3 i = floor(x); vec3 f = fract(x); f = f*f*(3.0-2.0*f);',
+'  return mix(mix(mix(hash(i), hash(i+vec3(1.0,0.0,0.0)), f.x), mix(hash(i+vec3(0.0,1.0,0.0)), hash(i+vec3(1.0,1.0,0.0)), f.x), f.y),',
+'             mix(mix(hash(i+vec3(0.0,0.0,1.0)), hash(i+vec3(1.0,0.0,1.0)), f.x), mix(hash(i+vec3(0.0,1.0,1.0)), hash(i+vec3(1.0,1.0,1.0)), f.x), f.y), f.z); }',
+'vec3 light(vec3 base, vec3 N, vec3 V, float shin, float ks){',
+'  vec3 L1 = normalize(vec3(0.55, 0.8, 0.75)); vec3 L2 = normalize(vec3(-0.7, 0.25, -0.6));',
+'  float d1 = max(dot(N, L1), 0.0); float d2 = max(dot(N, L2), 0.0);',
+'  vec3 amb = mix(vec3(0.42, 0.34, 0.32), vec3(0.85, 0.85, 0.9), 0.5 + 0.5*N.y);',
+'  vec3 col = base * (amb*0.55 + d1*0.8 + d2*0.3);',
+'  vec3 H = normalize(L1 + V); float s = pow(max(dot(N, H), 0.0), shin) * ks;',
+'  float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0);',
+'  return col + vec3(s) + rim*0.3*mix(base, vec3(1.0), 0.55);',
+'}',
+'void main(){',
+'  vec3 N = normalize(v_nrm); vec3 V = normalize(u_eye - v_wpos);',
+'  if (!gl_FrontFacing) N = -N;',
+'  vec3 col;',
+'  if (u_mode < 0.5) {',
+'    col = light(u_color, N, V, 40.0, 0.3);',
+'  } else if (u_mode < 1.5) {',
+'    vec3 b = u_color * (0.68 + 0.32*smoothstep(-1.5, 0.4, v_opos.y));',
+'    col = light(b, N, V, 90.0, 0.65) + b*0.2;',
+'  } else if (u_mode < 2.5) {',
+'    float ndv = abs(dot(N, V)); float fr = pow(1.0 - ndv, 3.0);',
+'    vec3 L = normalize(vec3(0.55, 0.8, 0.75)); vec3 H = normalize(L + V);',
+'    float sp = pow(max(dot(N, H), 0.0), 140.0);',
+'    float band = smoothstep(0.12, 0.0, abs(N.x + 0.5)) * smoothstep(-0.2, 0.4, N.z);',
+'    float band2 = smoothstep(0.05, 0.0, abs(N.x - 0.62)) * smoothstep(-0.2, 0.4, N.z);',
+'    float a = clamp(0.05 + fr*0.6 + sp*0.9 + band*0.35 + band2*0.22, 0.0, 0.95);',
+'    if (!gl_FrontFacing) a *= 0.45;',
+'    gl_FragColor = vec4(vec3(0.97, 0.99, 1.0)*a, a); return;',
+'  } else if (u_mode < 3.5) {',
+'    col = light(texture2D(u_tex, v_uv).rgb, N, V, 30.0, 0.18);',
+'  } else if (u_mode < 4.5) {',
+'    vec3 q = v_opos*22.0; float n0 = noise(q); float e = 0.15;',
+'    vec3 g = vec3(noise(q+vec3(e,0.0,0.0))-n0, noise(q+vec3(0.0,e,0.0))-n0, noise(q+vec3(0.0,0.0,e))-n0)/e;',
+'    vec3 Nb = normalize(N - g*0.05);',
+'    vec3 b = u_color*(0.82 + 0.25*n0);',
+'    b = mix(b, u_color2, smoothstep(0.965, 0.985, v_opos.y));',
+'    col = light(b, Nb, V, 28.0, 0.35);',
+'  } else if (u_mode < 5.5) {',
+'    float ang = atan(v_opos.z, v_opos.x);',
+'    vec2 s = vec2(ang/6.2831853*16.0, v_opos.y*8.0);',
+'    s.x += mod(floor(s.y), 2.0)*0.5;',
+'    vec2 f = fract(s) - 0.5; float d = length(f*vec2(1.0, 1.4));',
+'    float seed = smoothstep(0.14, 0.08, d); float pit = smoothstep(0.3, 0.14, d);',
+'    vec3 b = u_color*(1.0 - pit*0.25); b = mix(b, vec3(1.0, 0.86, 0.45), seed);',
+'    float star = 0.5 + 0.5*cos(ang*7.0);',
+'    float leaf = step(0.95 - 0.28*star, v_opos.y);',
+'    b = mix(b, u_color2, leaf);',
+'    col = light(b, N, V, 70.0, 0.6*(1.0 - leaf*0.7));',
+'  } else if (u_mode < 6.5) {',
+'    float t = clamp(v_opos.x*0.45 + v_opos.y*0.35 + 0.5, 0.0, 1.0);',
+'    vec3 b = mix(vec3(0.45, 0.62, 0.12), u_color, smoothstep(0.1, 0.5, t));',
+'    b = mix(b, u_color2, smoothstep(0.62, 0.98, t));',
+'    b *= 0.92 + 0.12*noise(v_opos*30.0);',
+'    col = light(b, N, V, 40.0, 0.35);',
+'  } else if (u_mode < 7.5) {',
+'    vec3 b = mix(u_color, vec3(0.5, 0.55, 0.78), 0.35*noise(v_opos*6.0));',
+'    float ang = atan(v_opos.z, v_opos.x); float star = 0.5 + 0.5*cos(ang*5.0);',
+'    b = mix(b, u_color2, step(0.88 - 0.06*star, v_opos.y));',
+'    col = light(b, N, V, 14.0, 0.18);',
+'  } else if (u_mode < 8.5) {',
+'    float rib = 0.86 + 0.14*step(0.5, fract(v_uv.x*60.0));',
+'    col = light(u_color*rib, N, V, 50.0, 0.45);',
+'  } else {',
+'    float d = length(v_uv - 0.5)*2.0; float a = 1.0 - smoothstep(0.0, 1.0, d); a = a*a*0.38*u_alpha;',
+'    gl_FragColor = vec4(u_color*a, a); return;',
+'  }',
+'  gl_FragColor = vec4(col, 1.0);',
+'}'].join('\n');
+
+var BVS = [
+'attribute vec4 a_b;',
+'uniform mat4 u_model; uniform mat4 u_vp; uniform float u_time; uniform float u_fill; uniform vec2 u_slope; uniform float u_px;',
+'varying float v_a;',
+'void main(){',
+'  float t = fract(a_b.z + u_time*(0.05 + a_b.w*0.06));',
+'  float y = mix(-1.25, u_fill + 0.02, t);',
+'  float ang = a_b.x + sin(u_time*1.3 + a_b.z*20.0)*0.04;',
+'  vec3 p = vec3(sin(ang)*a_b.y, y, cos(ang)*a_b.y);',
+'  float plane = u_fill + dot(p.xz, u_slope);',
+'  v_a = smoothstep(0.0, 0.06, plane - y) * smoothstep(0.0, 0.1, t);',
+'  gl_Position = u_vp * (u_model * vec4(p, 1.0));',
+'  gl_PointSize = (2.0 + a_b.w*6.0) * u_px;',
+'}'].join('\n');
+var BFS = [
+'precision highp float; varying float v_a;',
+'void main(){',
+'  vec2 c = gl_PointCoord - 0.5; float d = length(c)*2.0; if (d > 1.0) discard;',
+'  float ring = mix(0.25, 1.0, smoothstep(0.55, 0.95, d)) * (1.0 - smoothstep(0.92, 1.0, d));',
+'  float hl = smoothstep(0.3, 0.0, length(c - vec2(-0.15, -0.15)));',
+'  float a = (ring*0.55 + hl*0.5) * v_a;',
+'  gl_FragColor = vec4(vec3(a), a);',
+'}'].join('\n');
+
+function initGL(){
+  var canvas = $('#gl');
+  var gl = canvas.getContext('webgl', {antialias:true, alpha:true, premultipliedAlpha:true});
+  if (!gl) throw new Error('WebGL unavailable');
+
+  function shader(type, src){ var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+  function program(vs, fs, attrs){
+    var p = gl.createProgram(); gl.attachShader(p, shader(gl.VERTEX_SHADER, vs)); gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
+    attrs.forEach(function(a,i){ gl.bindAttribLocation(p, i, a); }); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    var u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (var i=0;i<n;i++){ var info = gl.getActiveUniform(p, i); u[info.name] = gl.getUniformLocation(p, info.name); }
+    return {p:p, u:function(name){ return u[name] || null; }};
+  }
+  var P = program(VS, FS, ['a_pos','a_nrm','a_uv']);
+  var B = program(BVS, BFS, ['a_b']);
+
+  function buf(arr, target, Type){ var b = gl.createBuffer(); gl.bindBuffer(target, b); gl.bufferData(target, new Type(arr), gl.STATIC_DRAW); return b; }
+  function mesh(g){ return { pos:buf(g.pos, gl.ARRAY_BUFFER, Float32Array), nrm:buf(g.nrm, gl.ARRAY_BUFFER, Float32Array),
+    uv:buf(g.uv, gl.ARRAY_BUFFER, Float32Array), idx:buf(g.idx, gl.ELEMENT_ARRAY_BUFFER, Uint16Array), count:g.idx.length }; }
+
+  // ---- geometry ----
+  var glassProf = [[0,-1.5],[0.55,-1.5],[0.66,-1.47],[0.71,-1.4],[0.72,-1.3],[0.72,0.45],[0.70,0.62],[0.62,0.8],[0.48,0.98],[0.34,1.12],[0.29,1.2],[0.28,1.3],[0.28,1.34]];
+  var liqProf = [[0,-1.45],[0.52,-1.45],[0.62,-1.42],[0.665,-1.36],[0.675,-1.28]];
+  for (var y=-1.2; y<=0.42; y+=0.08) liqProf.push([0.675, y]);
+  liqProf.push([0.66,0.58],[0.58,0.76],[0.44,0.93],[0,0.93]);
+  var capProf = [[0,1.27],[0.30,1.27],[0.315,1.29],[0.315,1.6],[0.30,1.625],[0,1.625]];
+  var mGlass = mesh(lathe(glassProf, 72));
+  var mLiquid = mesh(lathe(liqProf, 72));
+  var mLabel = mesh(lathe([[0.728,-0.95],[0.728,0.2]], 96));
+  var mCap = mesh(lathe(capProf, 72));
+  var mSphere = mesh(lathe(sphereProf(28), 40));
+  var mShadow = mesh({pos:[-1,0,-1, 1,0,-1, 1,0,1, -1,0,1], nrm:[0,1,0,0,1,0,0,1,0,0,1,0], uv:[0,0,1,0,1,1,0,1], idx:[0,1,2,0,2,3]});
+
+  // bubbles clinging to the inside of the glass
+  var NB = 110, bdata = [];
+  for (var i=0;i<NB;i++) bdata.push(Math.random()*Math.PI*2, 0.684, Math.random(), Math.random());
+  var bubbleBuf = buf(bdata, gl.ARRAY_BUFFER, Float32Array);
+
+  // ---- label texture (drawn with canvas 2D) ----
+  var lc = document.createElement('canvas'); lc.width = 2048; lc.height = 512;
+  var lx = lc.getContext('2d');
+  var tex = gl.createTexture();
+  function drawLabel(f){
+    var W = 2048, H = 512, x = lx, s, w, px;
+    x.clearRect(0,0,W,H);
+    x.fillStyle = f.label; x.fillRect(0,0,W,H);
+    x.fillStyle = f.accent; x.fillRect(0,0,W,64); x.fillRect(0,H-64,W,64);
+    x.fillStyle = 'rgba(255,255,255,.92)'; x.font = '700 30px Arial, sans-serif'; x.textAlign = 'left'; x.textBaseline = 'middle';
+    s = 'FRESH  •  RAW  •  ALIVE  •  '; w = x.measureText(s).width;
+    for (px = 0; px < W; px += w) x.fillText(s, px, 33);
+    s = 'NEVER FROM CONCENTRATE  ✦  '; w = x.measureText(s).width;
+    for (px = -40; px < W; px += w) x.fillText(s, px, H-31);
+    x.textAlign = 'center';
+    [600, 1448].forEach(function(cx){
+      var g = x.createRadialGradient(cx-26, 230, 6, cx, 256, 90);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(0.22, f.accent); g.addColorStop(1, f.deep);
+      x.fillStyle = g; x.beginPath(); x.arc(cx, 256, 78, 0, Math.PI*2); x.fill();
+    });
+    x.fillStyle = f.deep; x.font = '900 168px "Arial Black", Impact, Arial, sans-serif'; x.fillText('ZESTA', 1024, 200);
+    x.fillStyle = f.accent; x.font = '800 60px Arial, sans-serif'; x.fillText(f.name.toUpperCase(), 1024, 312);
+    x.fillStyle = f.deep; x.font = '600 32px Arial, sans-serif'; x.fillText('100% COLD-PRESSED JUICE  ·  330 ML', 1024, 384);
+    x.font = '800 40px Arial, sans-serif';
+    ['NO ADDED SUGAR','NEVER HEATED','KEEP CHILLED'].forEach(function(t, i){ x.fillText(t, 240, 190 + i*72); x.fillText(t, 1808, 190 + i*72); });
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, lc);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+
+  // ---- camera ----
+  var FOV = 35 * Math.PI/180, EYE = [0, 0.25, 6.2], DIST = Math.hypot(EYE[1], EYE[2]);
+  var view = M.lookAt(EYE, [0,0,0], [0,1,0]), vp, aspect = 1, pxScale = 1;
+  function resize(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), w = innerWidth, h = innerHeight;
+    canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    aspect = w/h; vp = M.mul(M.persp(FOV, aspect, 0.1, 50), view); pxScale = dpr * h / 900;
+    measureStages();
+  }
+
+  // ---- scroll-driven stage keyframes ----
+  var KF = {
+    hero:  {side: 1, o:1, s:1,   mo:1,   my:-0.42},
+    left:  {side:-1, o:1, s:1,   mo:0.2, my:0},
+    right: {side: 1, o:1, s:1,   mo:0.2, my:0},
+    hide:  {side: 1, o:0, s:0.8, mo:0,   my:0}
+  };
+  var stages = [];
+  function measureStages(){
+    stages = $$('[data-stage]').map(function(el){
+      var r = el.getBoundingClientRect();
+      return {c: r.top + scrollY + r.height/2, k: KF[el.getAttribute('data-stage')] || KF.hero};
+    });
+  }
+  function smooth(t){ return t*t*(3-2*t); }
+  function stageNow(){
+    var mid = scrollY + innerHeight/2, k = {};
+    if (!stages.length) return KF.hero;
+    if (mid <= stages[0].c) return stages[0].k;
+    var last = stages[stages.length-1]; if (mid >= last.c) return last.k;
+    for (var i=0;i<stages.length-1;i++){
+      var a = stages[i], b = stages[i+1];
+      if (mid >= a.c && mid < b.c){
+        var t = smooth((mid - a.c)/(b.c - a.c));
+        for (var key in a.k) k[key] = a.k[key] + (b.k[key] - a.k[key])*t;
+        return k;
+      }
+    }
+    return last.k;
+  }
+
+  // ---- fruit orbits ----
+  var orbit = [];
+  for (i=0;i<7;i++) orbit.push({ a: i/7*Math.PI*2 + (i%2)*0.3, r: 1.5 + ((i*37)%5)/5*0.45, y: -1.0 + ((i*53)%7)/6*2.0,
+    sp: 0.5 + ((i*29)%5)/5, ph: i*1.7, sz: 0.85 + ((i*13)%4)/10 });
+
+  // ---- state ----
+  var shown = 0, target = 0, trans = null, DUR = reduceMotion ? 700 : 1500;
+  var juice = F[0].juice.slice(), capC = hex2rgb(F[0].deep);
+  var fillK = 0, pop = 0, slope = [0,0], slopeV = [0,0];
+  var mouse = [0,0], tilt = [0,0], pos = null, lastX = 0, lastT = performance.now(), opac = -1;
+
+  addEventListener('pointermove', function(e){ mouse[0] = e.clientX/innerWidth*2 - 1; mouse[1] = e.clientY/innerHeight*2 - 1; }, {passive:true});
+  addEventListener('resize', resize);
+  addEventListener('load', measureStages);
+
+  function easeIO(t){ return t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
+  function easeBack(t){ var c1 = 1.70158, c3 = c1 + 1; return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2); }
+  function lerp3(a, b, k){ a[0] += (b[0]-a[0])*k; a[1] += (b[1]-a[1])*k; a[2] += (b[2]-a[2])*k; }
+
+  function setFlavor(i){
+    target = i;
+    if (!trans || trans.switched) trans = {t0: performance.now(), switched: false};
+  }
+
+  function bindMesh(m){
+    gl.bindBuffer(gl.ARRAY_BUFFER, m.pos); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, m.nrm); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, m.uv);  gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.idx);
+  }
+  function draw(m, model, mode, c1, c2, alpha){
+    gl.uniformMatrix4fv(P.u('u_model'), false, model);
+    gl.uniform1f(P.u('u_mode'), mode);
+    gl.uniform3fv(P.u('u_color'), c1 || [1,1,1]);
+    gl.uniform3fv(P.u('u_color2'), c2 || c1 || [1,1,1]);
+    gl.uniform1f(P.u('u_alpha'), alpha === undefined ? 1 : alpha);
+    bindMesh(m);
+    gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  function frame(now){
+    var dt = Math.min(0.05, (now - lastT)/1000); lastT = now;
+    var time = now/1000;
+
+    // --- flavor transition timeline: drain -> swap -> refill (+ spin) ---
+    var fillT = 1, popT = 1, spin = 0;
+    if (trans){
+      var p = Math.min(1, (now - trans.t0)/DUR);
+      if (p < 0.4){ fillT = 1 - 0.8*easeIO(p/0.4); popT = 1 - easeIO(p/0.4); }
+      else if (p < 0.5){ fillT = 0.2; popT = 0;
+        if (!trans.switched){ trans.switched = true; shown = target; drawLabel(F[shown]); } }
+      else { if (!trans.switched){ trans.switched = true; shown = target; drawLabel(F[shown]); }
+        var q = (p - 0.5)/0.5; fillT = 0.2 + 0.8*easeIO(q); popT = easeBack(q); }
+      if (!reduceMotion) spin = easeIO(p) * Math.PI * 2;
+      if (p >= 1) trans = null;
+    }
+    var kf = Math.min(1, dt*10);
+    fillK += (fillT - fillK) * (trans ? 1 : Math.min(1, dt*2.2)); // intro pour is gentle
+    pop += (popT - pop) * kf;
+    var fl = F[shown];
+    lerp3(juice, fl.juice, Math.min(1, dt*5));
+    lerp3(capC, hex2rgb(fl.deep), Math.min(1, dt*5));
+
+    // --- placement from scroll ---
+    var mobile = innerWidth < 960, k = stageNow();
+    var halfH = DIST*Math.tan(FOV/2), halfW = halfH*aspect, tx, ty, ts, to;
+    if (!mobile){ tx = k.side*halfW*0.5; ty = -0.05; ts = 0.85*k.s; to = k.o; }
+    else {
+      // on phones the bottle sits in the space reserved below the hero copy, then floats faintly behind later sections
+      var hr = document.querySelector('[data-stage="hero"]').getBoundingClientRect();
+      var cy = hr.bottom - innerHeight*0.27;
+      var heroY = (0.5 - cy/innerHeight)*2*halfH;
+      var hw = Math.max(0, Math.min(1, (k.mo - 0.2)/0.8));
+      tx = 0; ty = heroY*hw; ts = 0.5*k.s; to = k.mo;
+    }
+    if (!pos){ pos = {x:tx, y:ty, s:ts}; lastX = tx; }
+    var pk = Math.min(1, dt*(mobile ? 14 : 4));
+    pos.x += (tx - pos.x)*pk; pos.y += (ty - pos.y)*pk; pos.s += (ts - pos.s)*pk;
+    var vx = (pos.x - lastX)/Math.max(dt, 1e-3); lastX = pos.x;
+    if (Math.abs(to - opac) > 0.01){ opac = to; canvas.style.opacity = to.toFixed(2); }
+    if (opac < 0.02){ requestAnimationFrame(frame); return; }
+
+    // --- tilt toward cursor + motion lean ---
+    var tz = -mouse[0]*0.2 - vx*0.06, tX = mouse[1]*0.14;
+    tz = Math.max(-0.45, Math.min(0.45, tz));
+    tilt[0] += (tX - tilt[0])*Math.min(1, dt*3); tilt[1] += (tz - tilt[1])*Math.min(1, dt*3);
+    var rotY = time*(reduceMotion ? 0.15 : 0.45) + spin;
+
+    // --- liquid stays level: spring toward world-horizontal slope ---
+    var sx = -Math.tan(tilt[1]), sz = Math.tan(tilt[0]);
+    slopeV[0] += ((sx - slope[0])*60 - slopeV[0]*5)*dt; slopeV[1] += ((sz - slope[1])*60 - slopeV[1]*5)*dt;
+    slope[0] += slopeV[0]*dt; slope[1] += slopeV[1]*dt;
+    var c = Math.cos(rotY), s = Math.sin(rotY);
+    var objSlope = [slope[0]*c - slope[1]*s, slope[0]*s + slope[1]*c];
+    var fill = -1.3 + (0.38 + 1.3)*Math.max(0, fillK);
+
+    var S = pos.s;
+    var base = M.chain(M.T(pos.x, pos.y, 0), M.RZ(tilt[1]), M.RX(tilt[0]));
+    var model = M.chain(base, M.RY(rotY), M.S(S));
+
+    gl.clearColor(0,0,0,0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST);
+    gl.disable(gl.CULL_FACE);
+
+    // ===== main program =====
+    gl.useProgram(P.p);
+    gl.disableVertexAttribArray(3);
+    gl.enableVertexAttribArray(0); gl.enableVertexAttribArray(1); gl.enableVertexAttribArray(2);
+    gl.uniformMatrix4fv(P.u('u_vp'), false, vp);
+    gl.uniform3fv(P.u('u_eye'), EYE);
+    gl.uniform1f(P.u('u_time'), time);
+    gl.uniform1f(P.u('u_fill'), fill);
+    gl.uniform2fv(P.u('u_slope'), objSlope);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(P.u('u_tex'), 0);
+
+    // soft floor shadow
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
+    var shadowC = hex2rgb(fl.deep).map(function(v){ return v*0.45; });
+    draw(mShadow, M.chain(M.T(pos.x, pos.y - 1.56*S, 0), M.S(1.25*S, 1, 1.25*S)), 9, shadowC, null, 1);
+
+    // opaque pass
+    gl.disable(gl.BLEND); gl.depthMask(true);
+    if (fillK > 0.01) draw(mLiquid, model, 1, juice);
+    draw(mLabel, model, 3);
+    draw(mCap, model, 8, capC);
+
+    // orbiting fruit
+    if (pop > 0.02){
+      var fr = fl.fruit;
+      for (var i=0;i<orbit.length;i++){
+        var o = orbit[i], a = o.a + time*0.25*(reduceMotion ? 0.3 : 1);
+        var fx = Math.sin(a)*o.r*S*(mobile ? 0.85 : 1), fz = Math.cos(a)*o.r*S;
+        var fy = (o.y + Math.sin(time*o.sp + o.ph)*0.12)*S;
+        var sz = fr.size*o.sz*S*0.82*Math.max(0, pop);
+        var fm = M.chain(M.T(pos.x + fx, pos.y + fy, fz), M.RY(time*o.sp*0.8 + o.ph), M.RX(Math.sin(time*0.7 + o.ph)*0.5 + 0.2), M.RZ(o.ph), M.S(sz));
+        draw(mSphere, fm, fr.mode, fr.color, fr.color2);
+      }
+    }
+
+    // ===== bubbles =====
+    gl.enable(gl.BLEND); gl.depthMask(false);
+    if (fillK > 0.05){
+      gl.useProgram(B.p);
+      gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2);
+      gl.enableVertexAttribArray(0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bubbleBuf); gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
+      gl.uniformMatrix4fv(B.u('u_model'), false, model);
+      gl.uniformMatrix4fv(B.u('u_vp'), false, vp);
+      gl.uniform1f(B.u('u_time'), time);
+      gl.uniform1f(B.u('u_fill'), fill);
+      gl.uniform2fv(B.u('u_slope'), objSlope);
+      gl.uniform1f(B.u('u_px'), pxScale*S/0.85);
+      gl.drawArrays(gl.POINTS, 0, NB);
+      gl.useProgram(P.p);
+      gl.enableVertexAttribArray(1); gl.enableVertexAttribArray(2);
+    }
+
+    // ===== glass: back faces, then front faces =====
+    gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.FRONT); draw(mGlass, model, 2);
+    gl.cullFace(gl.BACK);  draw(mGlass, model, 2);
+    gl.disable(gl.CULL_FACE);
+    gl.depthMask(true);
+
+    requestAnimationFrame(frame);
+  }
+
+  drawLabel(F[0]);
+  resize();
+  requestAnimationFrame(frame);
+  return { setFlavor: setFlavor, measure: measureStages };
+}
+
+try { GL = initGL(); }
+catch (err){ console.error('3D disabled:', err); document.body.classList.add('no-gl'); GL = null; }
+
+// re-measure stage positions once fonts/layout settle
+setTimeout(function(){ if (GL) GL.measure(); }, 600);
+
+// fade the giant background word as you scroll
+var bw = $('#bigword');
+addEventListener('scroll', function(){
+  var t = Math.min(1, scrollY/(innerHeight*0.8));
+  bw.style.opacity = (0.9*(1-t)).toFixed(2);
+}, {passive:true});
+
+applyFlavor(0);
+})();
+</script>
+</body>
+</html>

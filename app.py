@@ -2442,6 +2442,12 @@ def selftest():
     except Exception as e:
         return "FAIL (" + str(round(_t.time()-t0,1)) + "s): " + str(e)[:300] + "\n" + _tb3.format_exc()[-600:]
 
+VERSION = "v9.52-raw-qwen"
+
+@app.route("/version")
+def ver_dbg():
+    return VERSION
+
 @app.route("/state")
 def state_dbg():
     ch = STATE.get("chats", {}).get(str(OWNER_ID), [])
